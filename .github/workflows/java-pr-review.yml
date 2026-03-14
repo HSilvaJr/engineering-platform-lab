@@ -75,3 +75,32 @@ jobs:
 
       - name: Run tests
         run: gradle ${{ inputs.gradle_task_test }}
+
+  ai-review:
+    name: ai-review
+    runs-on: ubuntu-latest
+    needs: unit-tests
+
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@v4
+
+      - name: Get PR diff
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install anthropic
+
+      - name: Run AI review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/ai_review.py pr_diff.txt
