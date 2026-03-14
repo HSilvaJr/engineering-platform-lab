@@ -7,6 +7,10 @@ on:
         required: false
         type: string
         default: "21"
+      gradle_version:
+        required: false
+        type: string
+        default: "8.10"
       gradle_task_build:
         required: false
         type: string
@@ -27,7 +31,6 @@ permissions:
   pull-requests: write
 
 jobs:
-
   build:
     name: build
     runs-on: ubuntu-latest
@@ -44,9 +47,11 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ inputs.gradle_version }}
 
       - name: Build project
-        run: ./gradlew ${{ inputs.gradle_task_build }}
+        run: gradle ${{ inputs.gradle_task_build }}
 
   unit-tests:
     name: unit-tests
@@ -65,44 +70,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ inputs.gradle_version }}
 
       - name: Run tests
-        run: ./gradlew ${{ inputs.gradle_task_test }}
-
-  ai-review:
-    name: ai-review
-    runs-on: ubuntu-latest
-    needs: [build, unit-tests]
-
-    steps:
-      - name: Checkout caller repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Checkout engineering platform
-        uses: actions/checkout@v4
-        with:
-          repository: HSilvaJr/engineering-platform-lab
-          path: engineering-platform
-          token: ${{ github.token }}
-
-      - name: Build PR diff
-        run: |
-          git fetch origin "${{ github.base_ref }}"
-          git diff "origin/${{ github.base_ref }}"...HEAD > pr.diff
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: pip install anthropic
-
-      - name: Run AI review
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          REVIEW_POLICY_PATH: engineering-platform/policies/java-review-policy.md
-          SERVICE_NAME: ${{ inputs.service_name }}
-        run: python engineering-platform/scripts/ai_review.py
+        run: gradle ${{ inputs.gradle_task_test }}
