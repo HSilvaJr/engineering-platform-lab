@@ -5,9 +5,31 @@ from anthropic import Anthropic
 
 DIFF_PATH = "pr.diff"
 
+
 def load_file(path: str) -> str:
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+def extract_json(text: str) -> dict:
+    text = text.strip()
+
+    if text.startswith("```json"):
+        text = text.removeprefix("```json").strip()
+    if text.startswith("```"):
+        text = text.removeprefix("```").strip()
+    if text.endswith("```"):
+        text = text.removesuffix("```").strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("Could not find JSON object in model response.")
+
+    json_text = text[start:end + 1]
+    return json.loads(json_text)
+
 
 def main():
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
@@ -69,25 +91,45 @@ PR DIFF:
 {diff[:120000]}
 """
 
-    response = client.messages.create(
-        model="claude-sonnet-4-5",
-        max_tokens=2500,
-        temperature=0,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=2500,
+            temperature=0,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+    except Exception as e:
+        print(f"Anthropic API call failed: {e}")
+        sys.exit(1)
 
     raw_text = response.content[0].text
     print(raw_text)
 
-    result = json.loads(raw_text)
-    score = int(result.get("score", 0))
-    decision = result.get("decision", "reject")
+    try:
+        result = extract_json(raw_text)
+    except Exception as e:
+        print(f"Failed to parse model JSON response: {e}")
+        sys.exit(1)
+
+    score = result.get("score", 0)
+    decision = str(result.get("decision", "reject")).strip().lower()
+
+    try:
+        score = int(score)
+    except Exception:
+        print("Invalid score returned by model.")
+        sys.exit(1)
+
+    if decision not in {"approve", "human_review", "reject"}:
+        print("Invalid decision returned by model.")
+        sys.exit(1)
 
     if decision == "reject" or score < 6:
         sys.exit(1)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
