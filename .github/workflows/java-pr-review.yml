@@ -87,6 +87,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Checkout engineering platform
+        uses: actions/checkout@v4
+        with:
+          repository: HSilvaJr/engineering-platform-lab
+          path: platform
+
       - name: Get PR diff
         run: |
           git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
@@ -107,4 +113,5 @@ jobs:
           REVIEW_POLICY_PATH: policies/java-review-policy.md
           SERVICE_NAME: ${{ inputs.service_name }}
         run: |
-          python scripts/ai_review.py
+          python platform/scripts/ai_review.py
+
