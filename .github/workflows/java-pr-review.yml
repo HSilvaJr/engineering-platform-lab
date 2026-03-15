@@ -110,7 +110,7 @@ jobs:
       - name: Run AI review
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          REVIEW_POLICY_PATH: policies/java-review-policy.md
+          REVIEW_POLICY_PATH: platform/policies/java-review-policy.md
           SERVICE_NAME: ${{ inputs.service_name }}
         run: |
           python platform/scripts/ai_review.py
